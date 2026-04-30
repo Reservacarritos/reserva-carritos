@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>Reserva de Turnos</title>
+
+<!-- PWA -->
+<meta name="theme-color" content="#2563eb"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Turnos"/>
+<script>
+  const _m={name:"Reserva de Turnos",short_name:"Turnos",start_url:".",display:"standalone",
+    background_color:"#f0f4f9",theme_color:"#2563eb",
+    description:"Reserva turnos para el ministerio de carritos",
+    icons:[{src:"https://cdn-icons-png.flaticon.com/512/2693/2693507.png",sizes:"512x512",type:"image/png"}]};
+  const _b=new Blob([JSON.stringify(_m)],{type:"application/json"});
+  const _u=URL.createObjectURL(_b);
+  document.addEventListener("DOMContentLoaded",()=>{
+    const l=document.createElement("link");l.rel="manifest";l.href=_u;
+    document.head.appendChild(l);
+  });
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/reserva-carritos/sw.js')
+      .then(() => console.log('SW registrado'))
+      .catch(e => console.log('SW error:', e));
+  }
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',sans-serif;background:#f0f4f9;min-height:100vh;display:flex;justify-content:center}
+.app{width:100%;max-width:480px;min-height:100vh;background:#f0f4f9;display:flex;flex-direction:column}
+.screen{display:none;flex-direction:column;flex:1}
+.screen.active{display:flex}
+.app-header{background:linear-gradient(160deg,#2563eb 0%,#1d4ed8 60%,#1e40af 100%);padding:44px 24px 22px;text-align:center;position:relative;overflow:hidden;flex-shrink:0}
+.app-header::before{content:'';position:absolute;top:-50px;right:-50px;width:160px;height:160px;background:rgba(255,255,255,0.07);border-radius:50%}
+.app-header::after{content:'';position:absolute;bottom:-30px;left:-20px;width:100px;height:100px;background:rgba(255,255,255,0.05);border-radius:50%}
+.app-header h1{font-size:1.5rem;font-weight:700;color:#fff;letter-spacing:-0.4px;position:relative;z-index:1;margin-bottom:4px}
+.app-header p{font-size:0.85rem;color:rgba(255,255,255,0.75);font-weight:500;position:relative;z-index:1}
+.header-row{display:flex;align-items:center;gap:12px;position:relative;z-index:1;margin-bottom:2px}
+.btn-back-header{background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:1.1rem;font-weight:700;width:36px;height:36px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
+.btn-back-header:hover{background:rgba(255,255,255,0.25)}
+.header-title-left{flex:1;text-align:left}
+.header-title-left h1{font-size:1.4rem;font-weight:700;color:#fff;letter-spacing:-0.3px;margin-bottom:2px}
+.header-title-left p{font-size:0.82rem;color:rgba(255,255,255,0.7);font-weight:500}
+.scroll{flex:1;overflow-y:auto;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.content{padding:20px 16px 32px;display:flex;flex-direction:column;gap:16px}
+.card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 2px 12px rgba(37,99,235,0.07),0 1px 3px rgba(0,0,0,0.06)}
+.step-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;color:#94a3b8;margin-bottom:12px}
+.fecha-valor{font-size:1.05rem;font-weight:700;color:#2563eb;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.fecha-nav{display:flex;align-items:center;gap:10px}
+.input-fecha{flex:1;background:#f8faff;border:1.5px solid #dbe4ff;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:600;color:#1e3a8a;padding:13px 14px;outline:none;transition:border-color .18s,box-shadow .18s;cursor:pointer}
+.input-fecha:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}
+.btn-nav{width:42px;height:42px;background:#eff6ff;border:1.5px solid #dbe4ff;border-radius:12px;color:#2563eb;font-size:1.1rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.btn-nav:hover{background:#2563eb;color:#fff;border-color:#2563eb}
+.lugar-list{display:flex;flex-direction:column;gap:10px}
+.lugar-card{display:flex;align-items:center;gap:14px;padding:16px;background:#fafbff;border:1.5px solid #e8edf8;border-radius:16px;cursor:pointer;transition:all .18s}
+.lugar-card:hover{border-color:#93c5fd;background:#eff6ff}
+.lugar-card.selected{border-color:#2563eb;background:#eff6ff;box-shadow:0 2px 12px rgba(37,99,235,0.12)}
+.lugar-icon-wrap{width:48px;height:48px;border-radius:14px;background:#e8edf8;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;transition:background .18s}
+.lugar-card.selected .lugar-icon-wrap{background:#dbeafe}
+.lugar-info{flex:1}
+.lugar-nombre{font-size:1rem;font-weight:700;color:#1e293b;letter-spacing:-0.1px}
+.lugar-sub{font-size:0.78rem;color:#94a3b8;font-weight:500;margin-top:2px}
+.lugar-check{width:24px;height:24px;border-radius:50%;border:2px solid #cbd5e1;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.75rem;color:transparent;transition:all .18s}
+.lugar-card.selected .lugar-check{background:#2563eb;border-color:#2563eb;color:#fff}
+.btn-primary{width:100%;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:700;color:#fff;padding:16px 20px;cursor:pointer;letter-spacing:-0.1px;box-shadow:0 4px 16px rgba(37,99,235,0.35),0 1px 4px rgba(37,99,235,0.2);display:flex;align-items:center;justify-content:center;gap:8px;transition:all .18s}
+.btn-primary:hover{box-shadow:0 6px 24px rgba(37,99,235,0.45);transform:translateY(-1px)}
+.btn-primary:active{transform:scale(.99)}
+.btn-whatsapp{background:linear-gradient(135deg,#25d366,#128c7e) !important;box-shadow:0 4px 16px rgba(37,211,102,0.35) !important}
+.btn-link{background:none;border:none;font-family:'DM Sans',sans-serif;font-size:0.92rem;font-weight:600;color:#64748b;cursor:pointer;padding:4px 0;text-align:center;display:block;width:100%}
+.btn-link:hover{color:#2563eb}
+.bloques-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.bloques-title{font-size:1rem;font-weight:700;color:#1e293b}
+.bloques-badge{background:#eff6ff;color:#2563eb;font-size:0.75rem;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid #dbeafe}
+.bloques-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bloque{border-radius:14px;padding:16px 13px;border:1.5px solid #e8edf8;background:#fafbff;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
+.bloque::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:14px 14px 0 0;background:#e2e8f0}
+.bloque.libre::before{background:linear-gradient(90deg,#22c55e,#16a34a)}
+.bloque.ocupado::before{background:linear-gradient(90deg,#f87171,#ef4444)}
+.bloque.libre:hover{border-color:#86efac;background:#f0fdf4;transform:translateY(-1px)}
+.bloque.ocupado{cursor:default}
+.bh-hora{font-size:0.95rem;font-weight:700;color:#1e293b;margin-bottom:6px}
+.bh-tag{display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:3px 9px;border-radius:20px}
+.bloque.libre .bh-tag{background:#dcfce7;color:#15803d}
+.bloque.ocupado .bh-tag{background:#fee2e2;color:#dc2626}
+.bloque.seleccionado{border-color:#2563eb;background:#eff6ff}
+.bloque.seleccionado .bh-tag{background:#dbeafe;color:#1d4ed8}
+.bh-nombre{font-size:0.73rem;color:#94a3b8;margin-top:6px;font-style:italic;line-height:1.4}
+.bloque-loading{border-radius:14px;padding:16px 13px;border:1.5px solid #e8edf8;background:#f8faff;position:relative;overflow:hidden}
+.bloque-loading::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 25%,rgba(255,255,255,0.6) 50%,transparent 75%);background-size:200% 100%;animation:shimmer 1.2s infinite}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.bl-bar{height:14px;background:#e2e8f0;border-radius:6px;margin-bottom:8px;width:70%}
+.bl-tag{height:10px;background:#e2e8f0;border-radius:20px;width:40%}
+.turno-banner{background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center}
+.tb-left p:first-child{font-size:0.72rem;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+.tb-left p:last-child{font-size:1rem;font-weight:700;color:#1e293b}
+.tb-right{background:#2563eb;color:#fff;font-size:0.8rem;font-weight:700;padding:7px 13px;border-radius:10px;cursor:pointer;transition:background .15s;border:none;font-family:'DM Sans',sans-serif}
+.tb-right:hover{background:#1d4ed8}
+.form-group{margin-bottom:14px}
+.form-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;margin-bottom:7px;display:block}
+.form-input{width:100%;background:#f8faff;border:1.5px solid #e2e8f0;border-radius:13px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:500;color:#1e293b;padding:13px 15px;outline:none;transition:all .18s;appearance:none;-webkit-appearance:none}
+.form-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}
+.form-input::placeholder{color:#cbd5e1;font-weight:400}
+.form-input option{background:#fff;font-family:'DM Sans',sans-serif}
+.form-input.error{border-color:#ef4444}
+.divider-label{display:flex;align-items:center;gap:10px;margin:4px 0 14px;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#c4b5ad}
+.divider-label::before,.divider-label::after{content:'';flex:1;height:1px;background:#e2e8f0}
+.alerta{border-radius:12px;padding:13px 16px;font-size:0.85rem;font-weight:600;display:flex;align-items:center;gap:10px;border:1.5px solid transparent}
+.alerta-ok{background:#f0fdf4;border-color:#bbf7d0;color:#15803d}
+.alerta-err{background:#fef2f2;border-color:#fecaca;color:#dc2626}
+.alerta-info{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
+.btn-danger{width:100%;background:linear-gradient(135deg,#ef4444,#dc2626);border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:700;color:#fff;padding:16px 20px;cursor:pointer;box-shadow:0 4px 16px rgba(239,68,68,0.3);display:flex;align-items:center;justify-content:center;gap:8px;transition:all .18s}
+.btn-danger:hover{box-shadow:0 6px 24px rgba(239,68,68,0.4);transform:translateY(-1px)}
+.spinner{width:32px;height:32px;border:3px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{text-align:center;color:#94a3b8;font-size:0.85rem;font-weight:500;margin-top:10px}
+.exito-row{display:flex;align-items:center;gap:12px;padding:13px;background:#f0fdf4;border-radius:12px;border:1.5px solid #bbf7d0}
+.exito-row-label{font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#16a34a;margin-bottom:2px}
+.exito-row-val{font-size:1rem;font-weight:700;color:#1e293b}
+.toast{display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:600;padding:13px 22px;border-radius:24px;box-shadow:0 8px 24px rgba(0,0,0,0.2);z-index:999;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- PANTALLA 1 — INICIO -->
+  <div class="screen active" id="sc-main">
+    <div class="app-header">
+      <h1>Reserva de Turnos</h1>
+      <p>Congregación Ciudad del Sol</p>
+    </div>
+    <div class="scroll">
+      <div class="content">
+        <div class="card">
+          <div class="step-label">1. Elige la fecha</div>
+          <div class="fecha-valor" id="fecha-texto">📅 Cargando…</div>
+          <div class="fecha-nav">
+            <button class="btn-nav" onclick="cambiarDia(-1)">‹</button>
+            <input type="date" class="input-fecha" id="input-fecha" onchange="actualizarFecha(this.value)"/>
+            <button class="btn-nav" onclick="cambiarDia(+1)">›</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="step-label">2. Elige el lugar</div>
+          <div class="lugar-list">
+            <div class="lugar-card selected" id="lc-Hospital" onclick="selLugar(this,'Hospital')">
+              <div class="lugar-icon-wrap">🏥</div>
+              <div class="lugar-info"><div class="lugar-nombre">Hospital</div><div class="lugar-sub">Entrada Principal</div></div>
+              <div class="lugar-check">✓</div>
+            </div>
+            <div class="lugar-card" id="lc-Terminal" onclick="selLugar(this,'Terminal')">
+              <div class="lugar-icon-wrap">🚌</div>
+              <div class="lugar-info"><div class="lugar-nombre">Terminal</div><div class="lugar-sub">Paradero de Buses</div></div>
+              <div class="lugar-check"></div>
+            </div>
+            <div class="lugar-card" id="lc-Plaza" onclick="selLugar(this,'Plaza El Retiro')">
+              <div class="lugar-icon-wrap">🌳</div>
+              <div class="lugar-info"><div class="lugar-nombre">Plaza El Retiro</div><div class="lugar-sub">Sector Central</div></div>
+              <div class="lugar-check"></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="irABloques()">Ver Disponibilidad →</button>
+        <button class="btn-danger" onclick="ir('sc-cancelar')">Cancelar un turno</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANTALLA 2 — BLOQUES -->
+  <div class="screen" id="sc-bloques">
+    <div class="app-header">
+      <div class="header-row">
+        <button class="btn-back-header" onclick="ir('sc-main')">‹</button>
+        <div class="header-title-left">
+          <h1 id="bloques-titulo">Hospital</h1>
+          <p id="bloques-subtitulo"></p>
+        </div>
+      </div>
+    </div>
+    <div class="scroll">
+      <div class="content">
+        <div class="card">
+          <div class="bloques-header">
+            <div class="bloques-title">Turnos del día</div>
+            <div class="bloques-badge" id="bloques-badge">— libres</div>
+          </div>
+          <div class="bloques-grid" id="bloques-grid"></div>
+        </div>
+        <div id="alerta-bloques"></div>
+        <button class="btn-primary" onclick="irAReservar()">Reservar turno seleccionado →</button>
+        <button class="btn-link" onclick="ir('sc-main')">← Volver al inicio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANTALLA 3 — FORMULARIO RESERVA -->
+  <div class="screen" id="sc-reservar">
+    <div class="app-header">
+      <div class="header-row">
+        <button class="btn-back-header" onclick="ir('sc-bloques')">‹</button>
+        <div class="header-title-left">
+          <h1>Nueva Reserva</h1>
+          <p>Completa tus datos</p>
+        </div>
+      </div>
+    </div>
+    <div class="scroll">
+      <div class="content">
+        <div class="turno-banner">
+          <div class="tb-left">
+            <p id="banner-lugar">Hospital · hoy</p>
+            <p id="banner-bloque">—</p>
+          </div>
+          <button class="tb-right" onclick="ir('sc-bloques')">Cambiar</button>
+        </div>
+        <div class="card">
+          <div class="step-label">Tus datos</div>
+          <div class="form-group">
+            <label class="form-label">Tu nombre completo</label>
+            <input type="text" class="form-input" id="f-nombre" placeholder="Ej: Maritza Castro" autocomplete="name"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Teléfono <span style="text-transform:none;letter-spacing:0;font-weight:400;color:#cbd5e1;font-size:0.78rem">(para cancelar después)</span></label>
+            <input type="tel" class="form-input" id="f-tel" placeholder="56912345678" autocomplete="tel"/>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Compañero/a <span style="text-transform:none;letter-spacing:0;font-weight:400;color:#cbd5e1;font-size:0.78rem">(opcional)</span></label>
+            <input type="text" class="form-input" id="f-comp" placeholder="Nombre del compañero"/>
+          </div>
+        </div>
+        <div id="alerta-reservar"></div>
+        <button class="btn-primary" id="btn-confirmar" onclick="confirmarReserva()">Confirmar Reserva →</button>
+        <button class="btn-link" onclick="ir('sc-bloques')">← Volver a los turnos</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANTALLA 4 — ÉXITO -->
+  <div class="screen" id="sc-exito">
+    <div class="app-header" style="background:linear-gradient(160deg,#16a34a,#15803d)">
+      <div style="position:relative;z-index:1;text-align:center;padding:12px 0 4px">
+        <div style="font-size:3rem;margin-bottom:10px">✅</div>
+        <h1 style="font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:4px">¡Reserva confirmada!</h1>
+        <p style="font-size:0.85rem;color:rgba(255,255,255,0.75);font-weight:500">Tu turno ha sido registrado</p>
+      </div>
+    </div>
+    <div class="scroll">
+      <div class="content">
+        <div class="card">
+          <div class="step-label">Resumen de tu reserva</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="exito-row">
+              <div style="font-size:1.3rem">📍</div>
+              <div><div class="exito-row-label">Lugar</div><div class="exito-row-val" id="exito-lugar">—</div></div>
+            </div>
+            <div class="exito-row">
+              <div style="font-size:1.3rem">📅</div>
+              <div><div class="exito-row-label">Fecha</div><div class="exito-row-val" id="exito-fecha">—</div></div>
+            </div>
+            <div class="exito-row">
+              <div style="font-size:1.3rem">🕐</div>
+              <div><div class="exito-row-label">Bloque</div><div class="exito-row-val" id="exito-bloque">—</div></div>
+            </div>
+            <div class="exito-row">
+              <div style="font-size:1.3rem">👤</div>
+              <div><div class="exito-row-label">Nombre</div><div class="exito-row-val" id="exito-nombre">—</div></div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-primary btn-whatsapp" onclick="enviarWhatsApp()">
+          📲 Enviar recordatorio por WhatsApp
+        </button>
+
+        <button class="btn-primary" onclick="otraReserva()">
+          + Hacer otra reserva
+        </button>
+
+        <button class="btn-link" onclick="ir('sc-main')">
+          Volver al inicio
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANTALLA 5 — CANCELAR -->
+  <div class="screen" id="sc-cancelar">
+    <div class="app-header" style="background:linear-gradient(160deg,#ef4444,#dc2626)">
+      <div class="header-row">
+        <button class="btn-back-header" onclick="ir('sc-main')">‹</button>
+        <div class="header-title-left">
+          <h1>Cancelar Turno</h1>
+          <p>Verifica con tu teléfono</p>
+        </div>
+      </div>
+    </div>
+    <div class="scroll">
+      <div class="content">
+        <div class="card">
+          <div class="step-label">Datos del turno</div>
+          <div class="form-group">
+            <label class="form-label">Lugar</label>
+            <select class="form-input" id="c-lugar">
+              <option value="Hospital">🏥 Hospital</option>
+              <option value="Terminal">🚌 Terminal</option>
+              <option value="Plaza El Retiro">🌳 Plaza El Retiro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha</label>
+            <input type="date" class="form-input" id="c-fecha"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bloque horario</label>
+            <select class="form-input" id="c-bloque">
+              <option value="06:00|08:00">06:00 – 08:00</option>
+              <option value="08:00|10:00">08:00 – 10:00</option>
+              <option value="12:00|14:00">12:00 – 14:00</option>
+              <option value="14:00|16:00">14:00 – 16:00</option>
+              <option value="16:00|18:00">16:00 – 18:00</option>
+              <option value="18:00|20:00">18:00 – 20:00</option>
+            </select>
+          </div>
+          <div class="divider-label">Verificación</div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Tu teléfono</label>
+            <input type="tel" class="form-input" id="c-tel" placeholder="56912345678"/>
+          </div>
+        </div>
+        <div id="alerta-cancelar"></div>
+        <button class="btn-danger" id="btn-cancelar" onclick="confirmarCancelacion()">🗑 Cancelar mi reserva</button>
+        <button class="btn-link" onclick="ir('sc-main')">← Volver al inicio</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const DIAS  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const BLOQUES_DEF = [
+  {inicio:'06:00',fin:'08:00'},{inicio:'08:00',fin:'10:00'},
+  {inicio:'12:00',fin:'14:00'},{inicio:'14:00',fin:'16:00'},
+  {inicio:'16:00',fin:'18:00'},{inicio:'18:00',fin:'20:00'}
+];
+
+let lugarSel  = 'Hospital';
+let bloqueSel = null;
+let fechaActual = '';
+
+document.addEventListener('DOMContentLoaded', () => {
+  const hoy = new Date();
+  const y = hoy.getFullYear();
+  const m = String(hoy.getMonth()+1).padStart(2,'0');
+  const d = String(hoy.getDate()).padStart(2,'0');
+  fechaActual = `${y}-${m}-${d}`;
+  document.getElementById('input-fecha').value = fechaActual;
+  document.getElementById('input-fecha').min   = fechaActual;
+  document.getElementById('c-fecha').min        = fechaActual;
+  actualizarFecha(fechaActual);
+});
+
+function actualizarFecha(val) {
+  fechaActual = val;
+  const [y,m,d] = val.split('-').map(Number);
+  const date = new Date(y, m-1, d);
+  document.getElementById('fecha-texto').textContent =
+    `📅 ${DIAS[date.getDay()]}, ${d} de ${cap(MESES[m-1])} de ${y}`;
+}
+
+function cambiarDia(delta) {
+  const [y,m,d] = fechaActual.split('-').map(Number);
+  const date = new Date(y, m-1, d);
+  date.setDate(date.getDate() + delta);
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  if (date < hoy) return;
+  const ny = date.getFullYear();
+  const nm = String(date.getMonth()+1).padStart(2,'0');
+  const nd = String(date.getDate()).padStart(2,'0');
+  const val = `${ny}-${nm}-${nd}`;
+  document.getElementById('input-fecha').value = val;
+  actualizarFecha(val);
+}
+
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+function fechaDDMMYYYY(val) { const [y,m,d] = val.split('-'); return `${d}/${m}/${y}`; }
+function fechaLarga(val) {
+  const [y,m,d] = val.split('-').map(Number);
+  const date = new Date(y, m-1, d);
+  return `${DIAS[date.getDay()]} ${d} de ${MESES[m-1]} de ${y}`;
+}
+
+function ir(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function selLugar(el, nombre) {
+  document.querySelectorAll('.lugar-card').forEach(c => {
+    c.classList.remove('selected');
+    c.querySelector('.lugar-check').textContent = '';
+  });
+  el.classList.add('selected');
+  el.querySelector('.lugar-check').textContent = '✓';
+  lugarSel = nombre;
+}
+
+const GAS_URL = 'https://proxy-carritos.reserva-carritos.workers.dev';
+
+async function gasCall(body) {
+  const params = new URLSearchParams();
+  Object.keys(body).forEach(k => { if (body[k] !== undefined && body[k] !== null) params.append(k, body[k]); });
+  const res = await fetch(GAS_URL + '?' + params.toString());
+  return await res.json();
+}
+
+function irABloques() {
+  document.getElementById('bloques-titulo').textContent = lugarSel;
+  document.getElementById('bloques-subtitulo').textContent = fechaLarga(fechaActual);
+  document.getElementById('bloques-badge').textContent = '…';
+  document.getElementById('alerta-bloques').innerHTML = '';
+  bloqueSel = null;
+  const grid = document.getElementById('bloques-grid');
+  grid.innerHTML = BLOQUES_DEF.map(() => `
+    <div class="bloque-loading"><div class="bl-bar"></div><div class="bl-tag"></div></div>`).join('');
+  ir('sc-bloques');
+  gasCall({ accion: 'getDisponibilidad', lugar: lugarSel, fecha: fechaDDMMYYYY(fechaActual) })
+    .then(res => renderBloques(res))
+    .catch(err => {
+      document.getElementById('alerta-bloques').innerHTML = alerta('err', '⚠️ Error de conexión: ' + err.message);
+      grid.innerHTML = '';
+    });
+}
+
+function renderBloques(res) {
+  const grid = document.getElementById('bloques-grid');
+  if (!res.ok) {
+    document.getElementById('alerta-bloques').innerHTML = alerta('err', '⚠️ ' + res.error);
+    grid.innerHTML = '';
+    return;
+  }
+  const libres = res.bloques.filter(b => b.libre).length;
+  document.getElementById('bloques-badge').textContent =
+    libres === 0 ? 'Sin libres' : libres + ' libre' + (libres !== 1 ? 's' : '');
+  grid.innerHTML = res.bloques.map(b => {
+    if (b.libre) {
+      return `<div class="bloque libre" onclick="selBloque(this,'${b.inicio}','${b.fin}')">
+        <div class="bh-hora">${b.inicio}–${b.fin}</div>
+        <div class="bh-tag">✓ Libre</div></div>`;
+    } else {
+      const comp = b.companero ? `<br>+ ${b.companero}` : '';
+      return `<div class="bloque ocupado">
+        <div class="bh-hora">${b.inicio}–${b.fin}</div>
+        <div class="bh-tag">✗ Ocupado</div>
+        <div class="bh-nombre">${b.voluntario}${comp}</div></div>`;
+    }
+  }).join('');
+}
+
+function selBloque(el, inicio, fin) {
+  document.querySelectorAll('.bloque.libre, .bloque.seleccionado').forEach(b => {
+    b.classList.remove('seleccionado');
+    b.querySelector('.bh-tag').textContent = '✓ Libre';
+    b.style.borderColor = '';
+    b.style.background  = '';
+  });
+  el.classList.add('seleccionado');
+  el.querySelector('.bh-tag').textContent = '→ Seleccionado';
+  bloqueSel = { inicio, fin };
+}
+
+function irAReservar() {
+  if (!bloqueSel) { mostrarToast('⚠️ Selecciona un bloque primero'); return; }
+  const [y,m,d] = fechaActual.split('-').map(Number);
+  document.getElementById('banner-lugar').textContent = `${lugarSel} · ${d} de ${MESES[m-1]}`;
+  document.getElementById('banner-bloque').textContent = `${bloqueSel.inicio} – ${bloqueSel.fin}`;
+  document.getElementById('alerta-reservar').innerHTML = '';
+  ir('sc-reservar');
+}
+
+function confirmarReserva() {
+  const nombre    = document.getElementById('f-nombre').value.trim();
+  const tel       = document.getElementById('f-tel').value.trim();
+  const companero = document.getElementById('f-comp').value.trim();
+  const alertDiv  = document.getElementById('alerta-reservar');
+  const btn       = document.getElementById('btn-confirmar');
+  document.getElementById('f-nombre').classList.remove('error');
+  document.getElementById('f-tel').classList.remove('error');
+  if (!nombre) { document.getElementById('f-nombre').classList.add('error'); return; }
+  if (!tel || tel.length < 7) { document.getElementById('f-tel').classList.add('error'); return; }
+  btn.disabled = true;
+  btn.textContent = 'Enviando…';
+  alertDiv.innerHTML = '';
+  gasCall({ accion: 'hacerReserva', lugar: lugarSel, fecha: fechaDDMMYYYY(fechaActual),
+      inicio: bloqueSel.inicio, fin: bloqueSel.fin, nombre, tel, companero })
+    .then(res => {
+      btn.disabled = false;
+      btn.textContent = 'Confirmar Reserva →';
+      if (res.ok) {
+        document.getElementById('exito-lugar').textContent  = lugarSel;
+        document.getElementById('exito-fecha').textContent  = fechaLarga(fechaActual);
+        document.getElementById('exito-bloque').textContent = `${bloqueSel.inicio} – ${bloqueSel.fin}`;
+        document.getElementById('exito-nombre').textContent = nombre;
+        ir('sc-exito');
+      } else {
+        alertDiv.innerHTML = alerta('err', '⚠️ ' + res.error);
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.textContent = 'Confirmar Reserva →';
+      alertDiv.innerHTML = alerta('err', '⚠️ Error: ' + err.message);
+    });
+}
+
+function otraReserva() {
+  document.getElementById('f-nombre').value = '';
+  document.getElementById('f-tel').value    = '';
+  document.getElementById('f-comp').value   = '';
+  bloqueSel = null;
+  irABloques();
+}
+
+function enviarWhatsApp() {
+  const lugar  = document.getElementById('exito-lugar').textContent;
+  const fecha  = document.getElementById('exito-fecha').textContent;
+  const bloque = document.getElementById('exito-bloque').textContent;
+  const nombre = document.getElementById('exito-nombre').textContent;
+  const tel    = document.getElementById('f-tel').value.trim().replace(/\D/g,'');
+  const cancelUrl = 'https://reservacarritos.github.io/reserva-carritos/';
+  const msg = encodeURIComponent(
+    '✅ *Reserva confirmada*\n' +
+    '📍 Lugar: ' + lugar + '\n' +
+    '📅 Fecha: ' + fecha + '\n' +
+    '🕐 Bloque: ' + bloque + '\n' +
+    '👤 Nombre: ' + nombre + '\n\n' +
+    '⚠️ Para cancelar abre este enlace:\n' +
+    cancelUrl + '\n\n' +
+    '_Recuerda llegar 5 minutos antes_ 🙏'
+  );
+  const url = tel ? 'https://wa.me/' + tel + '?text=' + msg : 'https://wa.me/?text=' + msg;
+  window.open(url, '_blank');
+}
+
+function confirmarCancelacion() {
+  const lugar    = document.getElementById('c-lugar').value;
+  const fechaV   = document.getElementById('c-fecha').value;
+  const bloqueV  = document.getElementById('c-bloque').value;
+  const tel      = document.getElementById('c-tel').value.trim();
+  const alertDiv = document.getElementById('alerta-cancelar');
+  const btn      = document.getElementById('btn-cancelar');
+  if (!fechaV || !tel) { alertDiv.innerHTML = alerta('err', '⚠️ Completa todos los campos.'); return; }
+  const [inicio, fin] = bloqueV.split('|');
+  btn.disabled = true;
+  btn.textContent = 'Procesando…';
+  alertDiv.innerHTML = '';
+  gasCall({ accion: 'cancelarReserva', lugar, fecha: fechaDDMMYYYY(fechaV), inicio, fin, telefono: tel })
+    .then(res => {
+      btn.disabled = false;
+      btn.innerHTML = '🗑 Cancelar mi reserva';
+      if (res.ok) {
+        alertDiv.innerHTML = alerta('ok', '✅ ' + res.mensaje);
+        document.getElementById('c-tel').value = '';
+      } else {
+        alertDiv.innerHTML = alerta('err', '⚠️ ' + res.error);
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.innerHTML = '🗑 Cancelar mi reserva';
+      alertDiv.innerHTML = alerta('err', '⚠️ Error: ' + err.message);
+    });
+}
+
+function alerta(tipo, msg) {
+  const cls = tipo === 'ok' ? 'alerta-ok' : tipo === 'info' ? 'alerta-info' : 'alerta-err';
+  return `<div class="alerta ${cls}">${msg}</div>`;
+}
+
+function mostrarToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+</script>
+</body>
+</html>
