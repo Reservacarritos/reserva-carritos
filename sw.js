@@ -1,4 +1,4 @@
-const CACHE_NAME = 'reserva-carritos-v1';
+const CACHE_NAME = 'reserva-carritos-v2';
 const FILES = ['/reserva-carritos/', '/reserva-carritos/index.html'];
 
 self.addEventListener('install', e => {
