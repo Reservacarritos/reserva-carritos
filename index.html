@@ -779,13 +779,12 @@ function selLugar(el, nombre) {
 // ════════════════════════════════════════
 //  URL DEL BACKEND GAS
 // ════════════════════════════════════════
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbz4xIwxenH8VI2rPDlIZjiwcPaAcWNkAG9zJqJfD56OwY3Vfcu6roFaFuApwZEwgWOZOA-kobz3DbovrHZmZz8A/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbz4xIwxenH8VI2rPDlIZjiwcPaAcWNkAG9zJqJfD56OwY3Vfcu6roFaFuApwZEwgWOZOA/exec';
 
 async function gasCall(body) {
-  const res = await fetch(GAS_URL, {
-    method: 'POST',
-    body: JSON.stringify(body)
-  });
+  const params = new URLSearchParams();
+  Object.keys(body).forEach(k => { if (body[k] !== undefined && body[k] !== null) params.append(k, body[k]); });
+  const res = await fetch(GAS_URL + '?' + params.toString());
   return await res.json();
 }
 
