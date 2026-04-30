@@ -22,6 +22,12 @@
     const l=document.createElement("link");l.rel="manifest";l.href=_u;
     document.head.appendChild(l);
   });
+  // Registrar Service Worker para instalación como app
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/reserva-carritos/sw.js')
+      .then(() => console.log('SW registrado'))
+      .catch(e => console.log('SW error:', e));
+  }
 </script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -779,7 +785,7 @@ function selLugar(el, nombre) {
 // ════════════════════════════════════════
 //  URL DEL BACKEND GAS
 // ════════════════════════════════════════
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbz9qMutHOtUxYr76421kt9jf-aAlR3m4UtS65I-QLAXq7FS4Wb6kvG-U6I38UtDNjg-YQ/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbz4xIwxenH8VI2rPDlIZjiwcPaAcWNkAG9zJqJfD56OwY3Vfcu6roFaFuApwZEwgWOZOA/exec';
 
 async function gasCall(body) {
   const params = new URLSearchParams();
